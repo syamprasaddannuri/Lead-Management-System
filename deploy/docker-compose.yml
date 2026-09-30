@@ -1,0 +1,71 @@
+# Lead Management System — single-VM deploy (sales.example.com) behind Caddy.
+# DB: the shared Cloud SQL instance (lead-management-db), database `leadmanagement`, reached via the
+# Cloud SQL Auth Proxy (uses the VM service account, which has roles/cloudsql.client).
+# Run from the repo root on the VM:
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+
+services:
+  cloud-sql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.11.4
+    container_name: lms-sqlproxy
+    command:
+      - "--address=0.0.0.0"
+      - "--port=5432"
+      - "${CLOUD_SQL_CONNECTION}"
+    restart: unless-stopped
+
+  backend:
+    build: ../backend
+    container_name: lms-backend
+    environment:
+      DB_HOST: cloud-sql-proxy
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-leadmanagement}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/.env}
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-team@example.com}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-Team@12345}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-team@example.com}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Lead Management System}
+      INBOUND_REPLY_DOMAIN: ${INBOUND_REPLY_DOMAIN:-}
+      INBOUND_HMAC_SECRET: ${INBOUND_HMAC_SECRET:-}
+      INBOUND_WEBHOOK_SECRET: ${INBOUND_WEBHOOK_SECRET:-}
+      APP_FRONTEND_URL: https://sales.example.com
+      APP_PASSWORD_MODE: ${APP_PASSWORD_MODE:-prod}
+    depends_on:
+      - cloud-sql-proxy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        VITE_API_BASE: /api
+    container_name: lms-frontend
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    container_name: lms-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

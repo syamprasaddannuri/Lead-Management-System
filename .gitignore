@@ -1,0 +1,9 @@
+node_modules/
+target/
+build/
+dist/
+.env
+.env.*
+!.env.example
+key.json
+.DS_Store

@@ -1,0 +1,22 @@
+# Auto-HTTPS for the Lead Management System sales console.
+# Caddy gets a Let's Encrypt cert for sales.example.com (DNS already points to this VM),
+# serves the SPA, and proxies /api/* to the backend.
+
+sales.example.com {
+    handle /api/* {
+        reverse_proxy backend:8080
+    }
+    handle {
+        reverse_proxy frontend:80
+    }
+}
+
+# Fallback over plain HTTP (e.g. raw IP) so it still serves before/after cert issuance.
+:80 {
+    handle /api/* {
+        reverse_proxy backend:8080
+    }
+    handle {
+        reverse_proxy frontend:80
+    }
+}

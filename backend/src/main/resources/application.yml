@@ -1,0 +1,61 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: lead-management-system
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:leadmanagement}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update      # greenfield: Hibernate manages schema; Flyway introduced in a later phase
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+          batch_size: 100        # group inserts/updates (fast bulk import)
+        order_inserts: true
+        order_updates: true
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+  servlet:
+    multipart:
+      max-file-size: 25MB        # inbound replies (SendGrid Inbound Parse) can carry attachments
+      max-request-size: 25MB
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:lead-management-system-dev-secret-change-me-to-a-long-random-string-0123456789}
+    expiry-millis: ${JWT_EXPIRY_MS:43200000}   # 12h
+  superadmin:
+    email: ${SUPERADMIN_EMAIL:team@example.com}
+    password: ${SUPERADMIN_PASSWORD:Team@12345}
+  frontend-url: ${APP_FRONTEND_URL:https://sales.example.com}
+  # stage|prod — stage uses fixed temp password 123456 and does not email credentials;
+  # prod generates a random password and emails it (invite + forgot-password).
+  password-mode: ${APP_PASSWORD_MODE:stage}
+
+mail:
+  from-email: ${MAIL_FROM:team@example.com}
+  from-name: ${MAIL_FROM_NAME:Lead Management System}
+
+# Inbound replies via SendGrid Inbound Parse. When reply-domain + hmac-secret are set, lead emails
+# carry a signed Reply-To and replies to reply-domain land back on the lead's timeline.
+inbound:
+  reply-domain: ${INBOUND_REPLY_DOMAIN:}
+  hmac-secret: ${INBOUND_HMAC_SECRET:}
+  webhook-secret: ${INBOUND_WEBHOOK_SECRET:}
+
+logging:
+  level:
+    org.springframework.security: INFO
